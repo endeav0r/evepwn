@@ -41,8 +41,8 @@ EveDB * EveDB :: get () {
         json_t * object = json_array_get(root, root_i);
 
         json_t * j_marketGroupID = json_object_get(object, "marketGroupID");
-        if (json_is_null(j_marketGroupID))
-            continue;
+        //if (json_is_null(j_marketGroupID))
+        //    continue;
 
         json_t * j_typeID      = json_object_get(object, "typeID");
         json_t * j_typeName    = json_object_get(object, "typeName");
@@ -53,7 +53,9 @@ EveDB * EveDB :: get () {
         std::string name          = json_string_value(j_typeName);
         std::string description   = json_is_null(j_description) ? "" : json_string_value(j_description);
         double      volume        = json_real_value(j_volume);
-        uint32_t    marketGroupID = json_integer_value(j_marketGroupID);
+        uint32_t    marketGroupID = UNDEFINED;
+        if (not json_is_null(j_marketGroupID))
+            marketGroupID = json_integer_value(j_marketGroupID);
 
         eveDB->types[typeID] = EveType(typeID,
                                        name,
@@ -182,7 +184,7 @@ EveDB * EveDB :: get () {
 
     // load market groups
 
-    std::string staMarketGroups = std::string(BASEPATH) + "staMarketGroups.json";
+    std::string staMarketGroups = std::string(BASEPATH) + "invMarketGroups.json";
     root = json_load_file(staMarketGroups.c_str(), 0, &error);
 
     if (root == NULL) {
@@ -209,9 +211,9 @@ EveDB * EveDB :: get () {
             parentGroupID = json_integer_value(j_parentGroupID);
         std::string name = json_string_value(j_marketGroupName);
 
-        eveDB->marketGroups[marketGroupID] = MarketGroup(marketGroupID,
-                                                         parentGroupID,
-                                                         name);
+        eveDB->marketGroups[marketGroupID] = EveMarketGroup(marketGroupID,
+                                                            parentGroupID,
+                                                            name);
     }
 
     json_decref(root);
@@ -221,27 +223,57 @@ EveDB * EveDB :: get () {
 }
 
 
-EveType & EveDB :: g_type (uint32_t typeID) {
+const EveType & EveDB :: g_type (uint32_t typeID) {
     EveDB * eveDB = EveDB::get();
     return eveDB->types[typeID];
 }
 
 
-EveRegion & EveDB :: g_region (uint32_t regionID) {
+const EveRegion & EveDB :: g_region (uint32_t regionID) {
     EveDB * eveDB = EveDB::get();
     return eveDB->regions[regionID];
 }
 
 
-EveSolarSystem & EveDB :: g_solarSystem (uint32_t solarSystemID) {
+const EveSolarSystem & EveDB :: g_solarSystem (uint32_t solarSystemID) {
     EveDB * eveDB = EveDB::get();
     return eveDB->solarSystems[solarSystemID];
 }
 
 
-EveStation & EveDB :: g_station (uint32_t stationID) {
+const EveStation & EveDB :: g_station (uint32_t stationID) {
     EveDB * eveDB = EveDB::get();
     return eveDB->stations[stationID];
+}
+
+
+const std::map <uint32_t, EveType> & EveDB :: g_types () { 
+    EveDB * eveDB = EveDB::get();
+    return eveDB->types;
+}
+
+
+const std::map <uint32_t, EveRegion> & EveDB :: g_regions () {
+    EveDB * eveDB = EveDB::get();
+    return eveDB->regions;
+}
+
+
+const std::map <uint32_t, EveSolarSystem> & EveDB :: g_solarSystems () {
+    EveDB * eveDB = EveDB::get();
+    return eveDB->solarSystems;
+}
+
+
+const std::map <uint32_t, EveStation> & EveDB :: g_stations () {
+    EveDB * eveDB = EveDB::get();
+    return eveDB->stations;
+}
+
+
+const std::map <uint32_t, EveMarketGroup> & EveDB :: g_marketGroups () {
+    EveDB * eveDB = EveDB::get();
+    return eveDB->marketGroups;
 }
 
 

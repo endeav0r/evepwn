@@ -1,10 +1,8 @@
 #ifndef mapView_HEADER
 #define mapView_HEADER
 
-#include <set>
 
 #include <gtkmm.h>
-#include <jansson.h>
 
 class MapView : public Gtk::ScrolledWindow {
     protected :
@@ -29,10 +27,10 @@ class MapView : public Gtk::ScrolledWindow {
         Gtk::TreeView treeView;
         Glib::RefPtr<Gtk::TreeStore> treeModel;
 
+        void init();
+
     public :
         MapView ();
-
-        void loadMap (std::string basepath);
 };
 
 #endif

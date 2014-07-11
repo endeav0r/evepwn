@@ -4,6 +4,7 @@
 #include <map>
 
 #include "config.h"
+#include "eveDB.h"
 
 MapView :: MapView () {
     add(treeView);
@@ -13,122 +14,59 @@ MapView :: MapView () {
 
     treeView.append_column("Name", columns.name);
 
+    Gtk::TreeView::Column * column;
+
+    column = treeView.get_column(0);
+    column->set_sort_column(columns.name);
+
+    init();
+
     show_all_children();
 }
 
 
-void MapView :: loadMap (std::string basepath) {
-    json_error_t error;
+void MapView :: init () {
+    const std::map <uint32_t, EveRegion> & regions = EveDB::g_regions();
+    std::map <uint32_t, EveRegion> :: const_iterator rit;
 
-    std::string mapRegions = std::string(BASEPATH) + "mapRegions.json";
-    std::string mapSolarSystems = std::string(BASEPATH) + "mapSolarSystems.json";
-    std::string staStations = std::string(BASEPATH) + "staStations.json";
+    std::map <uint32_t, Gtk::TreeModel::Row> regionMap;
 
-    json_t * root = json_load_file(mapRegions.c_str(), 0, &error);
+    for (rit = regions.begin(); rit != regions.end(); rit++) {
+        const EveRegion & region = rit->second;
 
-    if (root == NULL) {
-        std::cerr << "error loading regions from " << mapRegions << std::endl;
-        std::cerr << "error text: " << error.text << std::endl;
-        std::cerr << "error source: " << error.source << std::endl;
-        std::cerr << "error line: " << error.line << std::endl;
-        std::cerr << "error column: " << error.column << std::endl;
-        std::cerr << "error position: " << error.position << std::endl;
-
-        return;
+        regionMap[region.g_regionID()] = *(treeModel->append());
+        regionMap[region.g_regionID()][columns.solarSystemID] = UNDEFINED;
+        regionMap[region.g_regionID()][columns.stationID] = UNDEFINED;
+        regionMap[region.g_regionID()][columns.name] = region.g_name();
     }
 
-    std::map <unsigned int, Gtk::TreeModel::Row> regionMap;
 
-    for (size_t root_i = 0; root_i < json_array_size(root); root_i++) {
-        json_t * object = json_array_get(root, root_i);
-        json_t * j_regionID   = json_object_get(object, "regionID");
-        json_t * j_regionName = json_object_get(object, "regionName");
+    const std::map <uint32_t, EveSolarSystem> & solarSystems = EveDB::g_solarSystems();
+    std::map <uint32_t, EveSolarSystem> :: const_iterator ssit;
 
-        unsigned int regionID = json_integer_value(j_regionID);
-        Glib::ustring regionName = json_string_value(j_regionName);
+    std::map <uint32_t, Gtk::TreeModel::Row> solarSystemMap;
 
-        regionMap[regionID] = *(treeModel->append());
+    for (ssit = solarSystems.begin(); ssit != solarSystems.end(); ssit++) {
+        const EveSolarSystem & solarSystem = ssit->second;
 
-        regionMap[regionID][columns.regionID] = regionID;
-        regionMap[regionID][columns.solarSystemID] = -1;
-        regionMap[regionID][columns.stationID] = -1;
-        regionMap[regionID][columns.name] = regionName;
+        solarSystemMap[solarSystem.g_solarSystemID()] = *(treeModel->append(regionMap[solarSystem.g_regionID()].children()));
+        solarSystemMap[solarSystem.g_solarSystemID()][columns.regionID] = solarSystem.g_regionID();
+        solarSystemMap[solarSystem.g_solarSystemID()][columns.solarSystemID] = solarSystem.g_solarSystemID();
+        solarSystemMap[solarSystem.g_solarSystemID()][columns.stationID] = UNDEFINED;
+        solarSystemMap[solarSystem.g_solarSystemID()][columns.name] = solarSystem.g_name();
     }
 
-    json_decref(root);
 
-    root = json_load_file(mapSolarSystems.c_str(), 0, &error);
+    const std::map <uint32_t, EveStation> & stations = EveDB::g_stations();
+    std::map <uint32_t, EveStation> :: const_iterator sit;
 
-    if (root == NULL) {
-        std::cerr << "error loading solarSystems from " << mapSolarSystems << std::endl;
-        std::cerr << "error text: " << error.text << std::endl;
-        std::cerr << "error source: " << error.source << std::endl;
-        std::cerr << "error line: " << error.line << std::endl;
-        std::cerr << "error column: " << error.column << std::endl;
-        std::cerr << "error position: " << error.position << std::endl;
+    for (sit = stations.begin(); sit != stations.end(); sit++) {
+        const EveStation & station = sit->second;
 
-        return;
+        Gtk::TreeModel::Row row = *(treeModel->append(solarSystemMap[station.g_solarSystemID()].children()));
+        row[columns.regionID] = station.g_stationID();
+        row[columns.solarSystemID] = station.g_solarSystemID();
+        row[columns.stationID] = station.g_stationID();
+        row[columns.name] = station.g_name();
     }
-
-    std::map <unsigned int, Gtk::TreeModel::Row> solarSystemMap;
-
-    for (size_t root_i = 0; root_i < json_array_size(root); root_i++) {
-        json_t * object = json_array_get(root, root_i);
-
-        json_t * j_regionID = json_object_get(object, "regionID");
-        json_t * j_solarSystemID = json_object_get(object, "solarSystemID");
-        json_t * j_solarSystemName = json_object_get(object, "solarSystemName");
-
-        if (j_solarSystemName == NULL)
-            std::cerr << "solarSystemName == NULL" << std::endl;
-
-        unsigned int regionID = json_integer_value(j_regionID);
-        unsigned int solarSystemID = json_integer_value(j_solarSystemID);
-        Glib::ustring solarSystemName = json_string_value(j_solarSystemName);
-
-        solarSystemMap[solarSystemID] = *(treeModel->append(regionMap[regionID].children()));
-
-        solarSystemMap[solarSystemID][columns.regionID] = regionID;
-        solarSystemMap[solarSystemID][columns.solarSystemID] = solarSystemID;
-        solarSystemMap[solarSystemID][columns.stationID] = -1;
-        solarSystemMap[solarSystemID][columns.name] = solarSystemName;
-    }
-
-    json_decref(root);
-
-    root = json_load_file (staStations.c_str(), 0, &error);
-
-    if (root == NULL) {
-        std::cerr << "error loading stations from " << staStations << std::endl;
-        std::cerr << "error text: " << error.text << std::endl;
-        std::cerr << "error source: " << error.source << std::endl;
-        std::cerr << "error line: " << error.line << std::endl;
-        std::cerr << "error column: " << error.column << std::endl;
-        std::cerr << "error position: " << error.position << std::endl;
-
-        return;
-    }
-
-    for (size_t root_i = 0; root_i < json_array_size(root); root_i++) {
-        json_t * object = json_array_get(root, root_i);
-
-        json_t * j_regionID = json_object_get(object, "regionID");
-        json_t * j_solarSystemID = json_object_get(object, "solarSystemID");
-        json_t * j_stationID = json_object_get(object, "stationID");
-        json_t * j_stationName = json_object_get(object, "stationName");
-
-        unsigned int regionID = json_integer_value(j_regionID);
-        unsigned int solarSystemID = json_integer_value(j_solarSystemID);
-        unsigned int stationID = json_integer_value(j_stationID);
-        Glib::ustring stationName = json_string_value(j_stationName);
-
-        Gtk::TreeModel::Row row = *(treeModel->append(solarSystemMap[solarSystemID].children()));
-
-        row[columns.regionID] = regionID;
-        row[columns.solarSystemID] = solarSystemID;
-        row[columns.stationID] = stationID;
-        row[columns.name] = stationName;
-    }
-
-    json_decref(root);
 }

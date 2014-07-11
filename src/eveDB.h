@@ -7,24 +7,24 @@
 #include <map>
 #include <string>
 
-class MarketGroup {
+class EveMarketGroup {
     private :
         uint32_t marketGroupID;
         uint32_t parentGroupID;
         std::string name;
 
     public :
-        MarketGroup (uint32_t marketGroupID,
+        EveMarketGroup (uint32_t marketGroupID,
                      uint32_t parentGroupID,
                      std::string name)
             : marketGroupID (marketGroupID),
               parentGroupID (parentGroupID),
               name (name) {}
-        MarketGroup () {}
+        EveMarketGroup () {}
 
-        uint32_t g_marketGroupID () { return marketGroupID; }
-        uint32_t g_parentGroupID () { return parentGroupID; }
-        std::string g_name () { return name; }
+        uint32_t    g_marketGroupID () const { return marketGroupID; }
+        uint32_t    g_parentGroupID () const { return parentGroupID; }
+        std::string g_name          () const { return name; }
 };
 
 
@@ -48,11 +48,11 @@ class EveType {
               marketGroupID (marketGroupID) {}
         EveType () {}
 
-        uint32_t    g_typeID        () { return typeID; }
-        std::string g_name          () { return name; }
-        std::string g_description   () { return description; }
-        double      g_volume        () { return volume; }
-        uint32_t    g_marketGroupID () { return marketGroupID; }
+        uint32_t    g_typeID        () const { return typeID; }
+        std::string g_name          () const { return name; }
+        std::string g_description   () const { return description; }
+        double      g_volume        () const { return volume; }
+        uint32_t    g_marketGroupID () const { return marketGroupID; }
 };
 
 
@@ -66,8 +66,8 @@ class EveRegion {
               name (name) {}
         EveRegion () {}
 
-        uint32_t    g_regionID () { return regionID; }
-        std::string g_name     () { return name; }
+        uint32_t    g_regionID () const { return regionID; }
+        std::string g_name     () const { return name; }
 };
 
 
@@ -88,10 +88,10 @@ class EveSolarSystem {
               security (security) {}
         EveSolarSystem () {}
 
-        uint32_t    g_regionID      () { return regionID; }
-        uint32_t    g_solarSystemID () { return solarSystemID; }
-        std::string g_name          () { return name; }
-        double      g_security      () { return security; }
+        uint32_t    g_regionID      () const { return regionID; }
+        uint32_t    g_solarSystemID () const { return solarSystemID; }
+        std::string g_name          () const { return name; }
+        double      g_security      () const { return security; }
 };
 
 
@@ -115,11 +115,11 @@ class EveStation {
               name (name) {}
         EveStation () {}
 
-        uint32_t    g_stationID     () { return stationID; }
-        uint32_t    g_corporationID () { return corporationID; }
-        uint32_t    g_solarSystemID () { return solarSystemID; }
-        uint32_t    g_regionID      () { return regionID; }
-        std::string g_name          () { return name; }
+        uint32_t    g_stationID     () const { return stationID; }
+        uint32_t    g_corporationID () const { return corporationID; }
+        uint32_t    g_solarSystemID () const { return solarSystemID; }
+        uint32_t    g_regionID      () const { return regionID; }
+        std::string g_name          () const { return name; }
 };
 
 
@@ -129,15 +129,21 @@ class EveDB {
         std::map <uint32_t, EveRegion>      regions;
         std::map <uint32_t, EveSolarSystem> solarSystems;
         std::map <uint32_t, EveStation>     stations;
-        std::map <uint32_t, MarketGroup>    marketGroups;
+        std::map <uint32_t, EveMarketGroup> marketGroups;
 
         static EveDB * get ();
 
     public :
-        static EveType &        g_type        (uint32_t typeID);
-        static EveRegion &      g_region      (uint32_t regionID);
-        static EveSolarSystem & g_solarSystem (uint32_t solarSystemID);
-        static EveStation &     g_station     (uint32_t stationID);
+        static const EveType &        g_type        (uint32_t typeID);
+        static const EveRegion &      g_region      (uint32_t regionID);
+        static const EveSolarSystem & g_solarSystem (uint32_t solarSystemID);
+        static const EveStation &     g_station     (uint32_t stationID);
+
+        static const std::map <uint32_t, EveType>         & g_types ();
+        static const std::map <uint32_t, EveRegion>       & g_regions ();
+        static const std::map <uint32_t, EveSolarSystem>  & g_solarSystems ();
+        static const std::map <uint32_t, EveStation>      & g_stations     ();
+        static const std::map <uint32_t, EveMarketGroup > & g_marketGroups ();
 
         static bool             has_region    (uint32_t regionID);
         static bool             has_station   (uint32_t stationID);

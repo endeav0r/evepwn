@@ -30,6 +30,8 @@ class TypesView : public Gtk::ScrolledWindow {
 
         Gtk::Menu popupMenu;
 
+        void init ();
+
     public :
         TypesView ();
 
@@ -40,8 +42,6 @@ class TypesView : public Gtk::ScrolledWindow {
         void launchBidOfferWindow ();
 
         bool on_button_press_event (GdkEventButton * event);
-
-        void loadMarket (std::string basepath);
 };
 
 #endif

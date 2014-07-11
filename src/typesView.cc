@@ -7,6 +7,8 @@
 #include "mainWindow.h"
 #include "spreadWindow.h"
 
+#include "eveDB.h"
+
 #include "config.h"
 
 TypesView :: TypesView () {
@@ -29,6 +31,8 @@ TypesView :: TypesView () {
     popupMenu.show_all();
 
     treeView.signal_button_press_event().connect(sigc::mem_fun(*this, &TypesView::on_button_press_event), false);
+
+    init();
 
     show_all_children();
 }
@@ -122,101 +126,55 @@ std::set <uint32_t> TypesView :: getSelectedTypeIDs () {
 }
 
 
-void TypesView :: loadMarket (std::string basepath) {
-    json_error_t error;
+void TypesView :: init () {
+    const std::map <uint32_t, EveMarketGroup> & marketGroups = EveDB::g_marketGroups();
+    std::map <uint32_t, EveMarketGroup> :: const_iterator mmgit;
+    std::list <EveMarketGroup> mgList;
 
-    std::string invMarketGroups = std::string(BASEPATH) + "invMarketGroups.json";
-    std::string invTypes = std::string(BASEPATH) + "invTypes.json";
-    json_t * root = json_load_file(invMarketGroups.c_str(), 0, &error);
-
-    if (root == NULL) {
-        std::cerr << "error loading market groups from " << invMarketGroups << std::endl;
-        std::cerr << "error text: " << error.text << std::endl;
-        std::cerr << "error source: " << error.source << std::endl;
-        std::cerr << "error line: " << error.line << std::endl;
-        std::cerr << "error column: " << error.column << std::endl;
-        std::cerr << "error position: " << error.position << std::endl;
-
-        return;
+    for (mmgit = marketGroups.begin(); mmgit != marketGroups.end(); mmgit++) {
+        mgList.push_back(mmgit->second);
     }
 
     std::map <unsigned int, Gtk::TreeModel::Row> marketGroupMap;
 
-    size_t root_i = 0;
-    while (json_array_size(root) > 0) {
-        if (root_i >= json_array_size(root)) {
-            root_i = 0;
+    std::list <EveMarketGroup> :: iterator lmgit = mgList.begin();
+
+    while (mgList.size() > 0) {
+        const EveMarketGroup & marketGroup = *lmgit;
+        if (marketGroup.g_parentGroupID() == UNDEFINED) {
+            uint32_t id = marketGroup.g_marketGroupID();
+            marketGroupMap[id] = *(treeModel->append());
+            marketGroupMap[id][columns.marketGroupID] = id;
+            marketGroupMap[id][columns.typeID] = UNDEFINED;
+            marketGroupMap[id][columns.name] = marketGroup.g_name();
+            lmgit = mgList.erase(lmgit);
+            continue;
+        }
+        else if (marketGroupMap.count(marketGroup.g_parentGroupID()) > 0) {
+            uint32_t id = marketGroup.g_marketGroupID();
+            marketGroupMap[id] = *(treeModel->append(marketGroupMap[marketGroup.g_parentGroupID()].children()));
+            marketGroupMap[id][columns.marketGroupID] = id;
+            marketGroupMap[id][columns.typeID] = UNDEFINED;
+            marketGroupMap[id][columns.name] = marketGroup.g_name();
+            lmgit = mgList.erase(lmgit);
             continue;
         }
 
-        json_t * object = json_array_get(root, root_i);
-        json_t * j_parentGroupID   = json_object_get(object, "parentGroupID");
-        json_t * j_marketGroupID   = json_object_get(object, "marketGroupID");
-        json_t * j_marketGroupName = json_object_get(object, "marketGroupName");
-
-        unsigned int marketGroupID = json_integer_value(j_marketGroupID);
-
-        if (json_is_null(j_parentGroupID)) {
-            Glib::ustring marketGroupName = json_string_value(j_marketGroupName);
-            marketGroupMap[marketGroupID] = *(treeModel->append());
-            marketGroupMap[marketGroupID][columns.marketGroupID] = marketGroupID;
-            marketGroupMap[marketGroupID][columns.typeID] = UNDEFINED;
-            marketGroupMap[marketGroupID][columns.name] = marketGroupName;
-
-            json_array_remove(root, root_i);
-            continue;
-        }
-        else {
-            unsigned int parentGroupID = json_integer_value(j_parentGroupID);
-            if (marketGroupMap.count(parentGroupID) > 0) {
-                Glib::ustring marketGroupName = json_string_value(j_marketGroupName);
-                marketGroupMap[marketGroupID] = *(treeModel->append(marketGroupMap[parentGroupID].children()));
-                marketGroupMap[marketGroupID][columns.marketGroupID] = marketGroupID;
-                marketGroupMap[marketGroupID][columns.typeID] = UNDEFINED;
-                marketGroupMap[marketGroupID][columns.name] = marketGroupName;
-
-                json_array_remove(root, root_i);
-                continue;
-            }
-        }
-
-        root_i++;
+        lmgit++;
     }
 
-    json_decref(root);
+    const std::map <uint32_t, EveType> & types = EveDB::g_types();
+    std::map <uint32_t, EveType> :: const_iterator tit;
 
-    root = json_load_file(invTypes.c_str(), 0, &error);
+    for (tit = types.begin(); tit != types.end(); tit++) {
+        const EveType & type = tit->second;
 
-    if (root == NULL) {
-        std::cerr << "error loading market groups from " << invTypes << std::endl;
-        std::cerr << "error text: " << error.text << std::endl;
-        std::cerr << "error source: " << error.source << std::endl;
-        std::cerr << "error line: " << error.line << std::endl;
-        std::cerr << "error column: " << error.column << std::endl;
-        std::cerr << "error position: " << error.position << std::endl;
-
-        return;
-    }
-
-    for (root_i = 0; root_i < json_array_size(root); root_i++) {
-        json_t * object = json_array_get(root, root_i);
-
-        json_t * j_marketGroupID = json_object_get(object, "marketGroupID");
-        if (json_is_null(j_marketGroupID))
+        if (type.g_marketGroupID() == UNDEFINED)
             continue;
 
-        json_t * j_typeID   = json_object_get(object, "typeID");
-        json_t * j_typeName = json_object_get(object, "typeName");
-
-        unsigned int typeID = json_integer_value(j_typeID);
-        unsigned int marketGroupID = json_integer_value(j_marketGroupID);
-        Glib::ustring typeName = json_string_value(j_typeName);
-
-        Gtk::TreeModel::Row row = *(treeModel->append(marketGroupMap[marketGroupID].children()));
-        row[columns.marketGroupID] = marketGroupID;
-        row[columns.typeID] = typeID;
-        row[columns.name] = typeName;
+        Gtk::TreeModel::Row row = *(treeModel->append(marketGroupMap[type.g_marketGroupID()].children()));
+        row[columns.marketGroupID] = UNDEFINED;
+        row[columns.typeID] = type.g_typeID();
+        row[columns.name] = type.g_name();
     }
-
-    json_decref(root);
 }
